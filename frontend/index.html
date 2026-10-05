@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IoT Lab 3 Dashboard</title>
+
+  <!-- Tailwind CSS: no React, no Vite, no frontend build step -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js for the two realtime charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: "#102A43",
+            leaf: "#176B5A"
+          }
+        }
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen bg-slate-100 text-slate-800">
+
+  <!-- HEADER -->
+  <header class="bg-[#102A43] px-6 py-5 text-white shadow-md md:px-10">
+    <div class="mx-auto flex max-w-[1400px] flex-col justify-between gap-4 md:flex-row md:items-center">
+      <div>
+        <p class="text-[15px] tracking-[0.18em] text-white/60">Nhóm 12</p>
+        <h1 class="mt-1 text-2xl font-bold">IoT Lab 3</h1>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3 text-xs">
+        <span id="backendStatus"
+              class="flex items-center gap-2 rounded-full bg-white/10 px-3 py-2">
+          <span id="backendDot" class="h-2 w-2 rounded-full bg-red-400"></span>
+          <span id="backendText">Backend offline</span>
+        </span>
+
+        <span class="rounded-full bg-white px-3 py-2 font-semibold text-[#102A43]">
+          ESP8266_LAB1
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-[1400px] space-y-5 px-4 py-5 md:px-8">
+
+    <!-- DEVICE STATUS -->
+    <section class="flex flex-col justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm md:flex-row md:items-center">
+      <div class="flex items-center gap-2 font-semibold text-emerald-700">
+        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+        Device connected
+      </div>
+
+      <div class="text-xs text-slate-500">
+        Last update:
+        <span id="lastUpdate">--</span>
+      </div>
+    </section>
+
+    <!-- METRICS -->
+    <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+
+      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-xs text-slate-500">Temperature</p>
+        <div class="mt-2 text-3xl font-bold text-[#102A43]">
+          <span id="temperature">--</span><span class="text-base"> °C</span>
+        </div>
+        <p id="temperatureStatus" class="mt-2 text-xs text-slate-500">--</p>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-xs text-slate-500">Humidity</p>
+        <div class="mt-2 text-3xl font-bold text-[#102A43]">
+          <span id="humidity">--</span><span class="text-base"> %</span>
+        </div>
+        <p class="mt-2 text-xs text-slate-500">DHT11</p>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-xs text-slate-500">Relay</p>
+        <div id="relay" class="mt-2 text-3xl font-bold text-[#102A43]">--</div>
+        <p id="relayStatus" class="mt-2 text-xs text-slate-500">--</p>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-xs text-slate-500">Threshold</p>
+        <div class="mt-2 text-3xl font-bold text-[#102A43]">
+          30<span class="text-base"> °C</span>
+        </div>
+        <p class="mt-2 text-xs text-slate-500">Fire alert threshold</p>
+      </div>
+
+    </section>
+
+    <!-- CHARTS -->
+    <section class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+
+      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-3 flex items-start justify-between">
+          <div>
+            <h2 class="font-bold">Temperature</h2>
+            <p class="mt-1 text-xs text-slate-500">5-minute intervals</p>
+          </div>
+          <span class="text-xs text-slate-400">°C</span>
+        </div>
+        <div class="h-[280px]">
+          <canvas id="temperatureChart"></canvas>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-3 flex items-start justify-between">
+          <div>
+            <h2 class="font-bold">Humidity</h2>
+            <p class="mt-1 text-xs text-slate-500">5-minute intervals</p>
+          </div>
+          <span class="text-xs text-slate-400">%</span>
+        </div>
+        <div class="h-[280px]">
+          <canvas id="humidityChart"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- LATENCY -->
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-start">
+        <div>
+          <h2 class="font-bold">Alert Latency</h2>
+          <p id="eventId" class="mt-1 text-xs text-slate-500">Chưa có cảnh báo</p>
+        </div>
+
+        <span id="alertBadge"
+              class="w-fit rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
+          Chưa có cảnh báo
+        </span>
+      </div>
+
+      <div id="noAlert"
+           class="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+        Latency event chỉ được tạo khi nhiệt độ <b>≥ 30°C</b>.
+      </div>
+
+      <div id="latencyContent" class="hidden">
+
+        <!-- t0 ... t7 -->
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
+          <div class="rounded-lg border bg-slate-50 p-3">
+            <b class="text-xs">t0</b>
+            <p id="t0" class="mt-1 truncate text-[10px] text-slate-500">--</p>
+          </div>
+          <div class="rounded-lg border bg-slate-50 p-3">
+            <b class="text-xs">t1</b>
+            <p id="t1" class="mt-1 truncate text-[10px] text-slate-500">--</p>
+          </div>
+          <div class="rounded-lg border bg-slate-50 p-3">
+            <b class="text-xs">t2</b>
+            <p id="t2" class="mt-1 truncate text-[10px] text-slate-500">--</p>
+          </div>
+          <div class="rounded-lg border bg-slate-50 p-3">
+            <b class="text-xs">t3</b>
+            <p id="t3" class="mt-1 truncate text-[10px] text-slate-500">--</p>
+          </div>
+          <div class="rounded-lg border bg-slate-50 p-3">
+            <b class="text-xs">t4</b>
+            <p id="t4" class="mt-1 truncate text-[10px] text-slate-500">--</p>
+          </div>
+          <div class="rounded-lg border bg-slate-50 p-3">
+            <b class="text-xs">t5</b>
+            <p id="t5" class="mt-1 truncate text-[10px] text-slate-500">--</p>
+          </div>
+          <div class="rounded-lg border bg-slate-50 p-3">
+            <b class="text-xs">t6</b>
+            <p id="t6" class="mt-1 truncate text-[10px] text-slate-500">--</p>
+          </div>
+          <div class="rounded-lg border bg-slate-50 p-3">
+            <b class="text-xs">t7</b>
+            <p id="t7" class="mt-1 truncate text-[10px] text-slate-500">--</p>
+          </div>
+        </div>
+
+        <!-- FORMULAS -->
+        <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          <div class="rounded-lg border p-3">
+            <p class="text-xs text-slate-500">L_device = t1 − t0</p>
+            <p id="lDevice" class="mt-1 text-lg font-bold">--</p>
+          </div>
+
+          <div class="rounded-lg border p-3">
+            <p class="text-xs text-slate-500">L_uplink = t4 − t2</p>
+            <p id="lUplink" class="mt-1 text-lg font-bold">--</p>
+          </div>
+
+          <div class="rounded-lg border p-3">
+            <p class="text-xs text-slate-500">L_cloud = t5 − t4</p>
+            <p id="lCloud" class="mt-1 text-lg font-bold">--</p>
+          </div>
+
+          <div class="rounded-lg border p-3">
+            <p class="text-xs text-slate-500">L_notify = t7 − t6</p>
+            <p id="lNotify" class="mt-1 text-lg font-bold">--</p>
+          </div>
+
+          <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+            <p class="text-xs text-emerald-700">L_e2e = t7 − t0</p>
+            <p id="lE2e" class="mt-1 text-lg font-bold text-[#176B5A]">--</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TABLE -->
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="mb-4 flex flex-col justify-between gap-3 xl:flex-row xl:items-start">
+        <div>
+          <h2 class="font-bold">Recent Sensor Data</h2>
+          <p class="mt-1 text-xs text-slate-500">Hiển thị 5 bản ghi gần nhất</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <input id="fromDate" type="date"
+                 class="rounded-lg border border-slate-300 px-2 py-2 text-xs outline-none focus:border-[#176B5A]">
+
+          <span class="text-xs text-slate-400">→</span>
+
+          <input id="toDate" type="date"
+                 class="rounded-lg border border-slate-300 px-2 py-2 text-xs outline-none focus:border-[#176B5A]">
+
+          <button id="filterBtn"
+                  class="rounded-lg bg-[#176B5A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#125546]">
+            Filter
+          </button>
+        </div>
+      </div>
+
+      <div class="max-h-[270px] overflow-auto rounded-lg border border-slate-200">
+        <table class="min-w-full text-left text-xs">
+          <thead class="sticky top-0 bg-slate-50 text-slate-600">
+            <tr>
+              <th class="px-3 py-3 font-semibold">Time</th>
+              <th class="px-3 py-3 font-semibold">Device</th>
+              <th class="px-3 py-3 font-semibold">Temperature</th>
+              <th class="px-3 py-3 font-semibold">Humidity</th>
+              <th class="px-3 py-3 font-semibold">Relay</th>
+            </tr>
+          </thead>
+
+          <tbody id="dataTable" class="divide-y divide-slate-100">
+            <tr>
+              <td colspan="5" class="px-3 py-8 text-center text-slate-400">
+                Loading...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="pb-5 text-center text-xs text-slate-400">
+      IoT Lab 1 · ESP8266 + DHT11 + ThingSpeak + Supabase
+    </footer>
+  </main>
+
+<script>
+  const BACKEND =
+    localStorage.getItem("IOT_BACKEND_URL") || "http://localhost:3000";
+
+  let latestLatency = null;
+  let temperatureChart;
+  let humidityChart;
+
+  const $ = (id) => document.getElementById(id);
+
+  function setBackendStatus(online) {
+    $("backendDot").className =
+      "h-2 w-2 rounded-full " + (online ? "bg-emerald-400" : "bg-red-400");
+    $("backendText").textContent =
+      online ? "Backend online" : "Backend offline";
+  }
+
+  function formatTime(value) {
+    if (!value) return "--";
+    return new Date(value).toLocaleString("vi-VN");
+  }
+
+  function diff(a, b) {
+    if (a == null || b == null) return null;
+    return Math.max(0, Number(a) - Number(b));
+  }
+
+  function setText(id, value) {
+    $(id).textContent = value == null ? "--" : value;
+  }
+
+  function updateMetrics(row) {
+    if (!row) return;
+
+    const temp = Number(row.temperature);
+    const hum = Number(row.humidity);
+    const relayOn = temp >= 30;
+
+    $("temperature").textContent = temp.toFixed(1);
+    $("humidity").textContent = hum.toFixed(1);
+    $("relay").textContent = relayOn ? "ON" : "OFF";
+
+    $("temperatureStatus").textContent =
+      relayOn ? "⚠ High temperature" : "Normal";
+
+    $("temperatureStatus").className =
+      "mt-2 text-xs " +
+      (relayOn ? "font-semibold text-red-600" : "text-emerald-700");
+
+    $("relayStatus").textContent =
+      relayOn ? "Alarm active" : "Standby";
+
+    $("relayStatus").className =
+      "mt-2 text-xs " +
+      (relayOn ? "font-semibold text-red-600" : "text-slate-500");
+
+    $("lastUpdate").textContent = formatTime(row.created_at);
+  }
+
+  function updateLatency(event) {
+    if (!event) return;
+
+    latestLatency = event;
+
+    $("noAlert").classList.add("hidden");
+    $("latencyContent").classList.remove("hidden");
+
+    $("eventId").textContent = "Event: " + event.event_id;
+
+    $("alertBadge").textContent = "FIRE ALERT";
+    $("alertBadge").className =
+      "w-fit rounded-full bg-red-100 px-3 py-2 text-xs font-semibold text-red-700";
+
+    ["t0","t1","t2","t3","t4","t5","t6","t7"].forEach(k => {
+      setText(k, event[k]);
+    });
+
+    setText("lDevice",
+      diff(event.t1, event.t0) == null
+        ? "--"
+        : diff(event.t1, event.t0) + " ms"
+    );
+
+    setText("lUplink",
+      diff(event.t4, event.t2) == null
+        ? "--"
+        : diff(event.t4, event.t2) + " ms"
+    );
+
+    setText("lCloud",
+      diff(event.t5, event.t4) == null
+        ? "--"
+        : diff(event.t5, event.t4) + " ms"
+    );
+
+    setText("lNotify",
+      diff(event.t7, event.t6) == null
+        ? "Đang chờ t7..."
+        : diff(event.t7, event.t6) + " ms"
+    );
+
+    setText("lE2e",
+      diff(event.t7, event.t0) == null
+        ? "Đang chờ t7..."
+        : diff(event.t7, event.t0) + " ms"
+    );
+  }
+
+  function renderTable(rows) {
+    const tbody = $("dataTable");
+
+    if (!rows || rows.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="px-3 py-8 text-center text-slate-400">
+            Không có dữ liệu
+          </td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.slice(0, 5).map(row => {
+      const temp = Number(row.temperature);
+      const alert = temp >= 30;
+
+      return `
+        <tr class="hover:bg-slate-50">
+          <td class="px-3 py-3">${formatTime(row.created_at)}</td>
+          <td class="px-3 py-3">${row.device_id || "--"}</td>
+          <td class="px-3 py-3">${temp.toFixed(1)} °C</td>
+          <td class="px-3 py-3">${Number(row.humidity).toFixed(1)} %</td>
+          <td class="px-3 py-3">
+            <span class="${alert
+              ? "font-semibold text-red-600"
+              : "font-semibold text-[#176B5A]"}">
+              ${alert ? "ON" : "OFF"}
+            </span>
+          </td>
+        </tr>`;
+    }).join("");
+  }
+
+  function buildChart(canvasId, labels, data, type) {
+    const canvas = $(canvasId);
+    const existing = canvasId === "temperatureChart"
+      ? temperatureChart
+      : humidityChart;
+
+    if (existing) existing.destroy();
+
+    const chart = new Chart(canvas, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: type === "temperature" ? "Temperature" : "Humidity",
+          data,
+          borderColor: type === "temperature" ? "#c62828" : "#176B5A",
+          backgroundColor: "transparent",
+          borderWidth: 2.5,
+          tension: 0.3,
+          pointRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: {
+            ticks: {
+              maxTicksLimit: 5,
+              callback: function(value) {
+                const label = this.getLabelForValue(value);
+                return new Date(label).toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit"
+                });
+              }
+            }
+          },
+          y: type === "temperature"
+            ? {
+                min: 20,
+                max: 40,
+                ticks: { stepSize: 5 }
+              }
+            : {
+                min: 0,
+                max: 100,
+                ticks: { stepSize: 25 }
+              }
+        }
+      }
+    });
+
+    if (canvasId === "temperatureChart") {
+      temperatureChart = chart;
+    } else {
+      humidityChart = chart;
+    }
+  }
+
+  function renderCharts(rows) {
+    const sorted = [...(rows || [])].sort(
+      (a, b) => new Date(a.time) - new Date(b.time)
+    ).slice(-5);
+
+    const labels = sorted.map(x => x.time);
+    const temperatures = sorted.map(x => x.temperature);
+    const humidities = sorted.map(x => x.humidity);
+
+    buildChart("temperatureChart", labels, temperatures, "temperature");
+    buildChart("humidityChart", labels, humidities, "humidity");
+  }
+
+  async function loadDashboard() {
+    try {
+      const from = $("fromDate").value;
+      const to = $("toDate").value;
+
+      const historyParams = new URLSearchParams();
+      if (from) historyParams.set("from", from);
+      if (to) historyParams.set("to", to);
+
+      const [latestRes, historyRes, chartRes, latencyRes] =
+        await Promise.all([
+          fetch(`${BACKEND}/api/latest`),
+          fetch(`${BACKEND}/api/history?${historyParams.toString()}`),
+          fetch(`${BACKEND}/api/chart`),
+          fetch(`${BACKEND}/api/latency`)
+        ]);
+
+      if (!latestRes.ok || !historyRes.ok || !chartRes.ok) {
+        throw new Error("Backend request failed");
+      }
+
+      setBackendStatus(true);
+
+      const latest = await latestRes.json();
+      const history = await historyRes.json();
+      const chart = await chartRes.json();
+
+      updateMetrics(latest);
+      renderTable(history);
+      renderCharts(chart);
+
+      if (latencyRes.ok) {
+        const latency = await latencyRes.json();
+        if (latency) updateLatency(latency);
+      }
+
+    } catch (error) {
+      console.error(error);
+      setBackendStatus(false);
+    }
+  }
+
+  // SSE: when Node.js broadcasts an alert, browser receives it.
+  // t7 is the actual browser receipt time.
+  function connectSSE() {
+    const source = new EventSource(`${BACKEND}/events`);
+
+    source.onopen = () => setBackendStatus(true);
+
+    source.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+
+      if (message.type === "alert" ||
+          message.type === "t3_complete") {
+
+        const latency = {
+          ...message.latency,
+          t7: Date.now()
+        };
+
+        updateLatency(latency);
+      }
+    };
+
+    source.onerror = () => {
+      setBackendStatus(false);
+    };
+  }
+
+  $("filterBtn").addEventListener("click", loadDashboard);
+
+  // Initial load + periodic sensor-data refresh.
+  loadDashboard();
+  setInterval(loadDashboard, 5000);
+  connectSSE();
+</script>
+
+</body>
+</html>
